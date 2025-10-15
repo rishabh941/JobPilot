@@ -1,7 +1,7 @@
-package com.example.demo.model;
+// package com.example.demo.model;
 
-public @interface Table {
+// public @interface Table {
 
-    String name();
+//     String name();
 
-}
+// }

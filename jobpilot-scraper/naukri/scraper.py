@@ -37,7 +37,7 @@ def scrape_jobs(role, location, pages=3, experience_filter=None, posted=None):
         min_exp, max_exp = 0, 100
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, slow_mo=200)
+        browser = p.chromium.launch(headless=True, slow_mo=200)
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                        "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -55,8 +55,13 @@ def scrape_jobs(role, location, pages=3, experience_filter=None, posted=None):
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             page.wait_for_timeout(2000)
 
+
             html = page.content()
             soup = BeautifulSoup(html, "html.parser")
+
+            # Save the HTML for inspection
+            with open(f"naukri_page_{page_num}.html", "w", encoding="utf-8") as f:
+                f.write(soup.prettify())
 
             job_cards = soup.select("div.cust-job-tuple.layout-wrapper.lay-2.sjw__tuple")
             print(f"🧾 Page {page_num}: Found {len(job_cards)} jobs")
@@ -132,3 +137,7 @@ def scrape_jobs(role, location, pages=3, experience_filter=None, posted=None):
     print(f"❌ Jobs filtered out due to experience: {total_filtered_out}")
 
     return jobs
+
+
+
+
