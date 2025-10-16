@@ -91,8 +91,8 @@ Base: http://localhost:8080
 
   Example:
   ```
-  curl "http://localhost:8080/api/jobs/scrape?role=Software%20Engineer&location=Bangalore&experience_filter=0-2&posted=7days&pages=2"
-  ```
+curl "http://localhost:8080/api/jobs/scrape?role=Software%20Engineer&location=Bangalore&experience_filter=0-2&posted=7days&pages=2"
+```
 
 - Get all saved jobs  
   GET `/api/jobs`
