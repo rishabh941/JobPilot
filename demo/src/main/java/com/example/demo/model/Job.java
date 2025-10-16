@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class Job {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     private String title;
     private String url;
@@ -32,6 +32,11 @@ public class Job {
     private String jobType;
     private String seniorityLevel;
     private String source;
+    private String posted; 
+    private String jobCategory;
+    // private Integer salary;
+    // private Integer openings;
+    // private Integer applicants;
     
 
     @PrePersist
@@ -42,11 +47,11 @@ public class Job {
     }
     // Getters and Setters
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -139,4 +144,40 @@ public class Job {
     public void setSource(String source) {
         this.source = source;
     }
+
+    public String getPosted() {
+        return posted;
+    }
+
+    public void setPosted(String posted) {
+        this.posted = posted;
+    }
+    
+    public String getJobCategory() {
+        return jobCategory;
+    }
+
+    public void setJobCategory(String jobCategory) {
+        this.jobCategory = jobCategory;
+    }
+
+    // public Integer getSalary() {
+    //     return salary;
+    // }
+    // public void setSalary(Integer salary) {
+    //     this.salary = salary;
+    // }
+    // public Integer getOpenings() {
+    //     return openings;
+    // }
+    // public void setOpenings(Integer openings) {
+    //     this.openings = openings;
+    // }
+    // public Integer getApplicants() {
+    //     return applicants;
+    // }
+    // public void setApplicants(Integer applicants) {
+    //     this.applicants = applicants;
+    // }
+
 }

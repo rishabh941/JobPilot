@@ -1,0 +1,25 @@
+# Global ignores for this repository
+
+# Java/Maven
+target/
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE/editor
+.idea/
+.vscode/
+*.iml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env files and secrets
+.env
+**/.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db

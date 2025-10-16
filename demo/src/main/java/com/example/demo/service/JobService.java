@@ -5,15 +5,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import com.example.demo.dto.JobResponse;
 import com.example.demo.model.Job;
 import com.example.demo.repository.JobRepository;
 
 @Service
 public class JobService {
+
+    private static final Logger logger = LoggerFactory.getLogger(JobService.class);
 
     @Autowired
     private JobRepository jobRepository;
@@ -24,66 +31,110 @@ public class JobService {
     @Autowired
     private JobCategoryService jobCategoryService;
 
-    // 🟢 Fetch jobs from FastAPI and save unique ones
-    public List<Job> scrapeJobs(String role, String location) {
+    @Autowired
+    private JobClassifier jobClassifier;
+
+    @Value("${jobpilot.scraper.base-url:http://localhost:5000/scrape-jobs}")
+    private String fastApiBaseUrl;
+
+    /**
+     * 🟢 Scrapes jobs from FastAPI microservice and safely saves unique ones.
+     */
+    public List<Job> scrapeJobs(String role, String location, String experienceFilter, String posted, int pages) {
         RestTemplate restTemplate = new RestTemplate();
-        String url = "http://localhost:5000/scrape-jobs?role=" + role + "&location=" + location;
-        System.out.println("Fetching jobs from: " + url);
 
-        Job[] jobs = restTemplate.getForObject(url, Job[].class);
+        // ✅ Build dynamic URL
+        StringBuilder urlBuilder = new StringBuilder(fastApiBaseUrl)
+                .append("?role=").append(role)
+                .append("&location=").append(location);
 
-        if (jobs == null || jobs.length == 0) {
-            System.out.println("No jobs found from the scraping service.");
+        if (experienceFilter != null && !experienceFilter.isEmpty()) {
+            urlBuilder.append("&experience_filter=").append(experienceFilter);
+        }
+        if (posted != null && !posted.isEmpty()) {
+            urlBuilder.append("&posted=").append(posted);
+        }
+        if (pages > 0) {
+            urlBuilder.append("&pages=").append(pages);
+        }
+
+        String url = urlBuilder.toString();
+        logger.info("📡 Fetching jobs from scraper API: {}", url);
+
+        JobResponse response;
+        try {
+            response = restTemplate.getForObject(url, JobResponse.class);
+        } catch (Exception e) {
+            logger.error("❌ Failed to fetch jobs from scraper API: {}", e.getMessage());
             return List.of();
         }
 
-        List<Job> savedJobs = new ArrayList<>();
-        for (Job job : jobs) {
-            Job normalizedJob = jobNormalizerService.normalize(job);
-            jobCategoryService.enrichJob(normalizedJob);
-            normalizedJob.setJobHash(generateJobHash(
-                normalizedJob.getTitle(),
-                normalizedJob.getCompany(),
-                normalizedJob.getLocation()
-            ));
-
-            Optional<Job> existingJob = jobRepository.findByJobHash(normalizedJob.getJobHash());
-            if (existingJob.isPresent()) {
-                System.out.println("⚠️ Skipping duplicate: " + normalizedJob.getTitle() + " at " + normalizedJob.getCompany());
-                continue;
-            }
-
-            Job savedJob = jobRepository.save(normalizedJob);
-            savedJobs.add(savedJob);
-            System.out.println("✅ Saved new job: " + savedJob.getTitle() + " at " + savedJob.getCompany());
+        if (response == null || response.getJobs() == null) {
+            logger.warn("⚠️ No jobs received from scraper API.");
+            return List.of();
         }
 
-        System.out.println("💾 Total new jobs saved: " + savedJobs.size());
+        List<Job> scrapedJobs = response.getJobs();
+        List<Job> savedJobs = new ArrayList<>();
+
+        for (Job job : scrapedJobs) {
+            try {
+                // Normalize & enrich job data
+                Job normalizedJob = jobNormalizerService.normalize(job);
+                jobClassifier.classify(normalizedJob);
+                jobCategoryService.enrichJob(normalizedJob);
+
+                // Generate unique hash for deduplication
+                normalizedJob.setJobHash(generateJobHash(
+                        normalizedJob.getTitle(),
+                        normalizedJob.getCompany(),
+                        normalizedJob.getLocation()
+                ));
+
+                // 🧠 Safe save with deduplication
+                Job savedJob = saveJobSafely(normalizedJob);
+                if (savedJob != null) {
+                    savedJobs.add(savedJob);
+                }
+
+            } catch (Exception e) {
+                logger.error("❌ Error processing job '{}': {}", job.getTitle(), e.getMessage());
+            }
+        }
+
+        logger.info("💾 Total new jobs saved: {}", savedJobs.size());
         return savedJobs;
     }
 
-    // 🟢 Manually add a single job (used by /api/jobs/add)
-    public Job saveJob(Job job) {
-        Job normalizedJob = jobNormalizerService.normalize(job);
-        jobCategoryService.enrichJob(normalizedJob);
-        normalizedJob.setJobHash(generateJobHash(
-            normalizedJob.getTitle(),
-            normalizedJob.getCompany(),
-            normalizedJob.getLocation()
-        ));
+    /**
+     * 🧩 Safely saves a job — handles DB constraint exceptions gracefully.
+     */
+    private Job saveJobSafely(Job job) {
+        try {
+            // Pre-check to skip duplicates
+            Optional<Job> existing = jobRepository.findByJobHash(job.getJobHash());
+            if (existing.isPresent()) {
+                logger.warn("⚠️ Duplicate found before save: {} at {}", job.getTitle(), job.getCompany());
+                return existing.get();
+            }
 
-        Optional<Job> existingJob = jobRepository.findByJobHash(normalizedJob.getJobHash());
-        if (existingJob.isPresent()) {
-            System.out.println("⚠️ Duplicate job detected: " + normalizedJob.getTitle() + " at " + normalizedJob.getCompany());
-            return existingJob.get();
+            Job saved = jobRepository.save(job);
+            logger.info("✅ Saved new job: {} at {}", job.getTitle(), job.getCompany());
+            return saved;
+
+        } catch (DataIntegrityViolationException e) {
+            // If another process already inserted same job
+            logger.warn("⚠️ Duplicate detected during save (DB constraint): {}", job.getTitle());
+            return jobRepository.findByJobHash(job.getJobHash()).orElse(null);
+        } catch (Exception e) {
+            logger.error("❌ Unexpected error while saving job '{}': {}", job.getTitle(), e.getMessage());
+            return null;
         }
-
-        Job savedJob = jobRepository.save(normalizedJob);
-        System.out.println("✅ Manually added job: " + savedJob.getTitle() + " at " + savedJob.getCompany());
-        return savedJob;
     }
 
-    // 🔐 Hash generator
+    /**
+     * 🧠 Deterministic MD5 hash generator for deduplication
+     */
     private String generateJobHash(String title, String company, String location) {
         try {
             String raw = (title + "|" + company + "|" + location).toLowerCase().trim();
@@ -97,6 +148,30 @@ public class JobService {
         }
     }
 
+    /**
+     * 🟢 Add a job manually (from controller)
+     */
+    public Job saveJob(Job job) {
+        try {
+            Job normalizedJob = jobNormalizerService.normalize(job);
+            jobCategoryService.enrichJob(normalizedJob);
+            normalizedJob.setJobHash(generateJobHash(
+                    normalizedJob.getTitle(),
+                    normalizedJob.getCompany(),
+                    normalizedJob.getLocation()
+            ));
+
+            return saveJobSafely(normalizedJob);
+
+        } catch (Exception e) {
+            logger.error("❌ Error manually adding job '{}': {}", job.getTitle(), e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 🟢 Fetch all jobs from DB
+     */
     public List<Job> getAllJobs() {
         return jobRepository.findAll();
     }

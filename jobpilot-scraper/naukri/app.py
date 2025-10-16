@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from scraper import scrape_jobs
 
 app = FastAPI(
@@ -11,10 +11,10 @@ app = FastAPI(
 def scrape_jobs_endpoint(
     role: str,
     location: str,
-    pages: int = 3,
-    experience_filter: str = Query(None, alias="experience_filter"),
+    pages: int = 1,
+    experience_filter: str = None,
     posted: str = None
 ):
-    print(f"🔥 experience_filter received in API: {experience_filter}")
+    print("🔥 experience_filter received in API:", experience_filter)
     jobs = scrape_jobs(role, location, pages, experience_filter, posted)
     return {"jobs": jobs}

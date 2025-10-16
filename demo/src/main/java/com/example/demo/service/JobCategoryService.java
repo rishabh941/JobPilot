@@ -2,7 +2,6 @@ package com.example.demo.service;
 
 import com.example.demo.model.Job;
 import org.springframework.stereotype.Service;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -19,12 +18,15 @@ public class JobCategoryService {
     public void enrichJob(Job job) {
         if (job.getTitle() == null) return;
         String title = job.getTitle().toLowerCase();
+        String jobSkills = job.getSkills() != null ? job.getSkills().toLowerCase() : "";
 
-        // 1️⃣ Detect skills
-        Set<String> detectedSkills = SKILLS.stream()
-                .filter(title::contains)
-                .collect(Collectors.toSet());
-        job.setSkills(String.join(", ", detectedSkills));
+        // 1️⃣ Detect skills (if not already scraped)
+        if (jobSkills.isEmpty()) {
+            Set<String> detectedSkills = SKILLS.stream()
+                    .filter(title::contains)
+                    .collect(Collectors.toSet());
+            job.setSkills(String.join(", ", detectedSkills));
+        }
 
         // 2️⃣ Detect job type
         if (title.contains("intern") || title.contains("internship"))
@@ -46,6 +48,31 @@ public class JobCategoryService {
 
         // 4️⃣ Set source if not provided
         if (job.getSource() == null || job.getSource().isEmpty())
-            job.setSource("Naukri"); // default for now
+            job.setSource("Naukri");
+
+        // 5️⃣ Parse posted date (added next)
+        parsePostedDate(job);
+    }
+
+    private void parsePostedDate(Job job) {
+        if (job.getPosted() == null || job.getPosted().isBlank()) return;
+
+        String postedText = job.getPosted().toLowerCase();
+        Calendar cal = Calendar.getInstance();
+
+        try {
+            if (postedText.contains("today")) {
+                job.setPostedAt(cal.getTime().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
+            } else if (postedText.contains("day")) {
+                int days = Integer.parseInt(postedText.replaceAll("\\D+", ""));
+                cal.add(Calendar.DAY_OF_YEAR, -days);
+                job.setPostedAt(cal.getTime().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
+            } else {
+                // Default fallback
+                job.setPostedAt(cal.getTime().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Error parsing postedAt: " + e.getMessage());
+        }
     }
 }
