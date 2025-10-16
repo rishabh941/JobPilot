@@ -15,6 +15,7 @@ A hybrid project combining a Spring Boot backend (demo) with a Python-based Nauk
    - MAIL_USERNAME
    - MAIL_PASSWORD
    - OPENAI_API_KEY (optional)
+   - You can also copy `demo/src/main/resources/application.example.properties` to a local override or set system env vars.
 2. Build and run
    - Windows: `demo\mvnw.cmd spring-boot:run`
    - Unix: `./demo/mvnw spring-boot:run`
@@ -31,6 +32,9 @@ cd naukri
 uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 Docs: http://127.0.0.1:8000/docs
+
+### Environment examples
+- Copy `jobpilot-scraper/.env.example` to `jobpilot-scraper/.env` and fill values.
 
 ## Security
 - Secrets are read from environment variables; `.env` files are ignored by git.
