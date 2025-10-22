@@ -15,6 +15,9 @@ public class AIService {
     private OpenAIConfig openAIConfig;
 
     public String generateEmail(String hrName, String company, String role) {
+        if (!openAIConfig.isConfigured()) {
+            throw new IllegalStateException("OpenAI API key is not configured. Set OPENAI_API_KEY env var or openai.api.key property.");
+        }
         String prompt = "Write a professional cold email to " + hrName +
                         " at " + company + " for the " + role + " position.";
 

@@ -91,6 +91,9 @@ public class JobService {
                         normalizedJob.getLocation()
                 ));
 
+                normalizedJob.setStatus("pending");
+                normalizedJob.setAppliedAt(null);
+
                 // 🧠 Safe save with deduplication
                 Job savedJob = saveJobSafely(normalizedJob);
                 if (savedJob != null) {
@@ -160,6 +163,8 @@ public class JobService {
                     normalizedJob.getCompany(),
                     normalizedJob.getLocation()
             ));
+            normalizedJob.setStatus("pending");
+            normalizedJob.setAppliedAt(null);
 
             return saveJobSafely(normalizedJob);
 
