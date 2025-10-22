@@ -34,6 +34,8 @@ public class Job {
     private String source;
     private String posted; 
     private String jobCategory;
+    private String status;
+    private String appliedAt;
     // private Integer salary;
     // private Integer openings;
     // private Integer applicants;
@@ -159,6 +161,19 @@ public class Job {
 
     public void setJobCategory(String jobCategory) {
         this.jobCategory = jobCategory;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+    public void setStatus(String status) {
+        this.status = status;
+    }
+    public String getAppliedAt() {
+        return appliedAt;
+    }
+    public void setAppliedAt(String appliedAt) {
+        this.appliedAt = appliedAt;
     }
 
     // public Integer getSalary() {

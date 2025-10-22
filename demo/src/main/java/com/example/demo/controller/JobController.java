@@ -1,11 +1,14 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Job;
+import com.example.demo.repository.JobRepository;
 import com.example.demo.service.JobService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Optional;
+
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -15,6 +18,38 @@ public class JobController {
     @Autowired
     private JobService jobService;
 
+    @Autowired
+    private JobRepository jobRepository;
+
+    // Fetch unapplied jobs
+
+    @GetMapping("/unapplied")
+    public List<Job> getUnappliedJobs() {
+        return jobRepository.findByStatusIsNullOrStatus("pending");
+    }
+
+   @PatchMapping("/{id}/status")
+public Job updateJobStatus(
+        @PathVariable String id,
+        @RequestParam String status,
+        @RequestParam(required = false) String appliedAt) {
+
+    Optional<Job> jobOpt = jobRepository.findById(id);
+    if (jobOpt.isPresent()) {
+        Job job = jobOpt.get();
+        job.setStatus(status);
+
+        if (appliedAt != null && !appliedAt.isEmpty()) {
+            job.setAppliedAt(appliedAt);
+        }
+
+        return jobRepository.save(job);
+    } else {
+        throw new RuntimeException("Job not found with id: " + id);
+    }
+}
+
+    
     // 🟢 1️⃣ Trigger scraping with optional filters
     @GetMapping("/scrape")
     public ResponseEntity<?> scrapeJobs(
