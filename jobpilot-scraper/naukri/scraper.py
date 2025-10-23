@@ -7,7 +7,6 @@ import re
 
 # 🧠 Convert "Posted 2 days ago" → ISO 8601 timestamp
 def parse_posted_date(text: str):
-    """Parse a human-readable posted date like '2 days ago' or 'Today' into ISO format."""
     if not text:
         return None
 
@@ -27,6 +26,31 @@ def parse_posted_date(text: str):
     return None
 
 
+# 🧩 Utility: Auto-scroll until all jobs are loaded
+def auto_scroll_page(page, max_scrolls=30, scroll_pause=1.5):
+    """
+    Automatically scrolls down the page until no new content loads or max_scrolls is reached.
+    Returns True if scrolled successfully.
+    """
+    print("🔄 Auto-scrolling to load all jobs...")
+    previous_height = 0
+
+    for i in range(max_scrolls):
+        # Scroll to bottom
+        page.evaluate("window.scrollBy(0, document.body.scrollHeight)")
+        time.sleep(scroll_pause)
+
+        # Get current scroll height
+        current_height = page.evaluate("document.body.scrollHeight")
+        if current_height == previous_height:
+            print(f"✅ Reached end of page after {i+1} scrolls.")
+            break
+        previous_height = current_height
+
+    print("📜 Finished auto-scrolling.")
+    return True
+
+
 # 🧩 Main scraping function
 def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str = None, posted: str = None, headless: bool = False):
     """
@@ -37,7 +61,6 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
     print(f"🔍 Starting Naukri Scraper for Role='{role}' | Location='{location}'")
     print(f"🎯 Filters → Experience: {experience_filter or 'All'}, Posted: {posted or 'All'}")
 
-    # Build the base Naukri URL dynamically
     base_url = f"https://www.naukri.com/{role.replace(' ', '-')}-jobs-in-{location.replace(' ', '-')}"
     filters = []
     if posted:
@@ -47,7 +70,6 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
 
     print(f"🧭 Base URL: {base_url}")
 
-    # Parse experience range safely
     try:
         min_exp, max_exp = map(int, (experience_filter or "0-100").split("-"))
     except ValueError:
@@ -57,7 +79,6 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
     total_scraped = 0
     total_filtered_out = 0
 
-    # Launch Playwright browser
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless, slow_mo=150)
         context = browser.new_context(
@@ -70,7 +91,6 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
         )
         page = context.new_page()
 
-        # Scrape each page
         for page_num in range(1, pages + 1):
             url = f"{base_url}&page={page_num}" if "?" in base_url else f"{base_url}?page={page_num}"
             print(f"\n🌐 Visiting Page {page_num}: {url}")
@@ -81,11 +101,8 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
                 print(f"❌ Failed to load Page {page_num}: {e}")
                 continue
 
-            # Scroll gradually to load lazy content
-            for _ in range(4):
-                page.mouse.wheel(0, 400)
-                time.sleep(1)
-            page.wait_for_timeout(1500)
+            # 🌀 Auto-scroll until all job cards load
+            auto_scroll_page(page)
 
             html = page.content()
             soup = BeautifulSoup(html, "html.parser")
@@ -115,7 +132,6 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
                     if exp_tag else "N/A"
                 )
 
-                # --- Experience Filtering ---
                 txt = experience_text.lower()
                 nums = re.findall(r"\d+", txt)
                 keep_job = True
@@ -136,11 +152,9 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
                     total_filtered_out += 1
                     continue
 
-                # --- Posted Date ---
                 posted_text = posted_tag.text.strip() if posted_tag else "N/A"
                 posted_at = parse_posted_date(posted_text)
 
-                # ✅ Construct Job Object
                 job = {
                     "title": title_tag.text.strip() if title_tag else "N/A",
                     "company": company_tag.text.strip() if company_tag else "N/A",
@@ -153,7 +167,6 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
                 }
 
                 print(f"💼 {job['title']} | 🏢 {job['company']} | 📍 {job['location']} | ⏳ {job['experience']}")
-
                 jobs.append(job)
                 total_scraped += 1
 
@@ -166,4 +179,3 @@ def scrape_jobs(role: str, location: str, pages: int = 3, experience_filter: str
     print(f"🚫 Jobs filtered out by experience: {total_filtered_out}")
 
     return jobs
-

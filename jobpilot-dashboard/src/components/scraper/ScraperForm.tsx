@@ -118,7 +118,7 @@ export default function ScraperForm() {
                 <SelectValue placeholder="Select experience range" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Experience</SelectItem>
+                <SelectItem value="all">All Experience</SelectItem>
                 <SelectItem value="0-1">0-1 years</SelectItem>
                 <SelectItem value="0-2">0-2 years</SelectItem>
                 <SelectItem value="2-5">2-5 years</SelectItem>
@@ -137,7 +137,7 @@ export default function ScraperForm() {
                 <SelectValue placeholder="Select time range" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any time</SelectItem>
+                <SelectItem value="any">Any time</SelectItem>
                 <SelectItem value="1day">Last 24 hours</SelectItem>
                 <SelectItem value="3days">Last 3 days</SelectItem>
                 <SelectItem value="7days">Last 7 days</SelectItem>

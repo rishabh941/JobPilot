@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatRelativeTime } from '@/lib/utils';
+import { motion } from 'framer-motion';
 import type { Job } from '@/lib/types';
 import { ExternalLink } from 'lucide-react';
 
@@ -11,59 +12,71 @@ interface RecentJobsProps {
 const getStatusColor = (status: Job['status']) => {
   switch (status) {
     case 'applied':
-      return 'bg-green-500/10 text-green-500 border-green-500/20';
+      return 'bg-success/10 text-success border-success/20 hover:bg-success/20';
     case 'pending':
-      return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      return 'bg-warning/10 text-warning border-warning/20 hover:bg-warning/20';
     case 'failed':
-      return 'bg-red-500/10 text-red-500 border-red-500/20';
+      return 'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20';
     default:
-      return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      return 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20';
   }
 };
 
 export default function RecentJobs({ jobs }: RecentJobsProps) {
   return (
-    <Card>
+    <Card className="hover-lift transition-smooth border-border/50 bg-card/80 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle>Recent Jobs</CardTitle>
+        <CardTitle className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          Recent Jobs
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {jobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
+            <motion.p 
+              className="text-sm text-muted-foreground text-center py-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
               No jobs found. Start by scraping some jobs!
-            </p>
+            </motion.p>
           ) : (
-            jobs.map((job) => (
-              <div
+            jobs.map((job, index) => (
+              <motion.div
                 key={job.id}
-                className="flex items-start justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="group flex items-start justify-between p-4 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-accent/30 transition-smooth hover-lift bg-card/50"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-foreground truncate">
+                    <h4 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                       {job.title}
                     </h4>
-                    <Badge className={getStatusColor(job.status)}>
+                    <Badge className={`${getStatusColor(job.status)} transition-smooth font-medium`}>
                       {job.status || 'new'}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground font-medium">
                     {job.company} • {job.location}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground/80 mt-1">
                     {formatRelativeTime(job.postedAt)}
                   </p>
                 </div>
-                <a
+                <motion.a
                   href={job.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-smooth p-2 rounded-lg hover:bg-primary/10"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <ExternalLink size={16} />
-                </a>
-              </div>
+                  <ExternalLink size={18} strokeWidth={2.5} />
+                </motion.a>
+              </motion.div>
             ))
           )}
         </div>

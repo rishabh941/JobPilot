@@ -30,3 +30,9 @@ export default function Scraper() {
     </div>
   );
 }
+
+// export default function Scraper() {
+//   return <h1 className="text-4xl text-center mt-10">Scraper Page Loaded ✅</h1>;
+// }
+
+

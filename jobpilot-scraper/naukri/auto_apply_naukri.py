@@ -5,22 +5,21 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 
-# Load environment variables
+# ----------------------- ENVIRONMENT -----------------------
 load_dotenv()
-SPRING_API_BASE = "http://localhost:8080/api/jobs"
+SPRING_JOB_API = "http://localhost:8080/api/jobs"
+SPRING_AUTOAPPLY_API = "http://localhost:8080/api/autoapply"
 NAUKRI_EMAIL = os.getenv("NAUKRI_EMAIL")
 NAUKRI_PASSWORD = os.getenv("NAUKRI_PASSWORD")
 
-# Directory for success screenshots
 os.makedirs("logs/applied_jobs", exist_ok=True)
 
 
 # ----------------------- BACKEND COMMUNICATION -----------------------
 
 def fetch_unapplied_jobs():
-    """Fetch jobs with status null or pending from backend."""
     print("🧾 Fetching unapplied jobs from backend...")
-    response = requests.get(f"{SPRING_API_BASE}/unapplied")
+    response = requests.get(f"{SPRING_JOB_API}/unapplied")
     if response.status_code == 200:
         jobs = response.json()
         print(f"✅ Found {len(jobs)} unapplied jobs.")
@@ -31,50 +30,47 @@ def fetch_unapplied_jobs():
 
 
 def update_job_status(job_id, status, applied_at=None):
-    """Update job status + appliedAt timestamp in backend."""
     params = {"status": status}
     if applied_at:
         params["appliedAt"] = applied_at
-    response = requests.patch(f"{SPRING_API_BASE}/{job_id}/status", params=params)
+    response = requests.patch(f"{SPRING_JOB_API}/{job_id}/status", params=params)
     if response.status_code == 200:
-        print(f"📦 Updated job {job_id} → {status} ({applied_at or 'no timestamp'})")
+        print(f"📦 Updated job {job_id} → {status}")
     else:
         print(f"⚠️ Failed to update job status for {job_id}: {response.text}")
 
 
-# ----------------------- LOGIN + POPUP HANDLING -----------------------
+def update_progress(processed, successful):
+    """Send progress updates to Spring Boot backend."""
+    try:
+        requests.post(f"{SPRING_AUTOAPPLY_API}/update-progress", json={
+            "processed": processed,
+            "successful": successful
+        })
+        print(f"📊 Progress sent → processed={processed}, successful={successful}")
+    except Exception as e:
+        print(f"⚠️ Failed to update progress: {e}")
+
+
+# ----------------------- LOGIN + POPUPS -----------------------
 
 def login_to_naukri(page):
-    """Log into Naukri automatically (or manual fallback)."""
     print("🔐 Logging into Naukri...")
     page.goto("https://www.naukri.com/nlogin/login", wait_until="domcontentloaded")
-    page.wait_for_timeout(2000)
-
     page.fill("#usernameField", NAUKRI_EMAIL)
     page.fill("#passwordField", NAUKRI_PASSWORD)
-
-    login_btn = (
-        page.query_selector(".btn-primary.loginButton")
-        or page.query_selector("button[type='submit']")
-        or page.query_selector("button:has-text('Login')")
-    )
-
-    if login_btn:
-        print("🔘 Clicking login button...")
-        login_btn.click()
-    else:
-        print("⚠️ Login button not found!")
-
+    btn = page.query_selector(".btn-primary.loginButton") or page.query_selector("button[type='submit']")
+    if btn:
+        btn.click()
     try:
         page.wait_for_url("**/mnjuser/homepage", timeout=20000)
         print("✅ Logged in successfully!")
     except:
-        print("⚠️ Manual login required — please log in manually in the browser window.")
-        input("🔹 Press ENTER once you’ve logged in...")
+        print("⚠️ Manual login required. Please login manually.")
+        input("Press ENTER once logged in...")
 
 
 def handle_popup(page):
-    """Automatically handle popups like gender/salary etc."""
     try:
         if page.query_selector("text='What is your gender identity?'"):
             page.click("text='Male'")
@@ -83,11 +79,7 @@ def handle_popup(page):
             if input_box:
                 input_box.fill("6 LPA")
                 page.keyboard.press("Enter")
-
-        submit_btn = (
-            page.query_selector("text='Submit'")
-            or page.query_selector("button:has-text('Continue')")
-        )
+        submit_btn = page.query_selector("text='Submit'") or page.query_selector("button:has-text('Continue')")
         if submit_btn:
             submit_btn.click()
     except Exception as e:
@@ -97,7 +89,6 @@ def handle_popup(page):
 # ----------------------- APPLY LOGIC -----------------------
 
 def apply_to_job(page, job):
-    """Visit job URL, attempt application, and detect success."""
     url = job.get("url")
     title = job.get("title", "N/A")
     company = job.get("company", "N/A")
@@ -112,7 +103,6 @@ def apply_to_job(page, job):
         page.goto(url, wait_until="domcontentloaded", timeout=60000)
         page.wait_for_timeout(3000)
 
-        # 🔍 Detect Apply Buttons
         apply_btn = (
             page.query_selector("button[title*='Apply']")
             or page.query_selector("a[title*='Apply']")
@@ -126,21 +116,17 @@ def apply_to_job(page, job):
 
         btn_text = apply_btn.text_content().strip().lower()
 
-        # 🟡 Case 1: Apply on Company Site → Pending
         if "company site" in btn_text or "employer site" in btn_text:
             print("🟡 Detected 'Apply on company site' → status pending.")
             return "pending", None
 
-        # 🟢 Case 2: Normal Apply Flow
         apply_btn.click()
         handle_popup(page)
         page.wait_for_timeout(2500)
 
-        # 🧠 Wait for success confirmation dynamically
         success = False
-        for _ in range(8):  # wait up to 8 seconds
-            success_box = page.query_selector("div:has-text('You have successfully applied')")
-            if success_box:
+        for _ in range(8):
+            if page.query_selector("div:has-text('You have successfully applied')"):
                 success = True
                 break
             page.wait_for_timeout(1000)
@@ -148,18 +134,12 @@ def apply_to_job(page, job):
         if success:
             applied_time = datetime.now().isoformat(timespec="seconds")
             print(f"✅ Successfully applied: {title} at {applied_time}")
-
-            # 📸 Save screenshot proof
             safe_title = title.replace(" ", "_").replace("/", "_")
-            screenshot_path = f"logs/applied_jobs/{safe_title}_{job_id}.png"
-            page.screenshot(path=screenshot_path)
-            print(f"🖼️ Screenshot saved → {screenshot_path}")
-
+            page.screenshot(path=f"logs/applied_jobs/{safe_title}_{job_id}.png")
             return "applied", applied_time
         else:
             print(f"⚠️ No success confirmation detected for {title}")
             return "failed", None
-
     except Exception as e:
         print(f"❌ Error applying to {title}: {e}")
         return "failed", None
@@ -168,53 +148,52 @@ def apply_to_job(page, job):
 # ----------------------- MAIN SERVICE -----------------------
 
 def auto_apply_jobs(limit=5, stop_event=None):
-    """Fetch jobs, auto-apply, and update statuses.
-
-    Accepts an optional threading.Event (`stop_event`) which, when set,
-    will stop processing further jobs as soon as possible.
-    """
     jobs = fetch_unapplied_jobs()
     if not jobs:
         print("✅ No unapplied jobs found.")
+        update_progress(0, 0)
+        # Ensure the dashboard reflects stopped state even on empty queue
+        try:
+            requests.post(f"{SPRING_AUTOAPPLY_API}/stop")
+        except Exception as e:
+            print(f"⚠️ Failed to notify stop on empty queue: {e}")
         return {"processed": 0, "successful": 0}
 
     processed = 0
     successful = 0
+    update_progress(processed, successful)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, slow_mo=200)
         context = browser.new_context()
         page = context.new_page()
 
-        # Step 1: Login
         login_to_naukri(page)
 
-        # Step 2: Apply to jobs
         for job in jobs[:limit]:
-            # Check for external stop signal
-            try:
-                if stop_event is not None and getattr(stop_event, 'is_set', lambda: False)():
-                    print("⏸️ Stop requested — halting auto-apply loop.")
-                    break
-            except Exception:
-                # If stop_event isn't a proper Event, ignore and continue
-                pass
-
-            job_id = job.get("id")
+            # Cooperative cancellation from FastAPI background controller (if used)
+            if stop_event is not None and getattr(stop_event, "is_set", lambda: False)():
+                print("⏹️ Stop requested — exiting early.")
+                break
             status, applied_at = apply_to_job(page, job)
-            update_job_status(job_id, status, applied_at)
+            update_job_status(job["id"], status, applied_at)
             processed += 1
             if status == "applied":
                 successful += 1
+            update_progress(processed, successful)  # ✅ Live update to Spring
             time.sleep(2)
 
         browser.close()
 
     print(f"\n🎯 Auto Apply completed! Processed: {processed}, Successful: {successful}")
+    update_progress(processed, successful)
+    # Signal the dashboard to stop showing "Running"
+    try:
+        requests.post(f"{SPRING_AUTOAPPLY_API}/stop")  # ✅ Mark as stopped
+    except Exception as e:
+        print(f"⚠️ Failed to notify stop: {e}")
     return {"processed": processed, "successful": successful}
 
 
-# ----------------------- ENTRY POINT -----------------------
-
 if __name__ == "__main__":
-    auto_apply_jobs(limit=14)
+    auto_apply_jobs(limit=10)

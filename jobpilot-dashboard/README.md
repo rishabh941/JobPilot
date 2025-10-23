@@ -126,3 +126,21 @@ This template provides a minimal setup to get React working in Vite with HMR and
 Currently, two official plugins are available:
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/)
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+---
+
+## 🎨 Theming
+
+The dashboard uses design tokens defined as CSS variables in `src/index.css`. Colors are specified as HSL triplets and consumed via `hsl(var(--token))` so you can easily adjust the palette without changing components.
+
+- Light theme tokens: inside `:root { ... }`
+- Dark theme tokens: inside `.dark { ... }`
+
+Key tokens used across the UI:
+- `--background`, `--foreground`, `--card`, `--popover`
+- `--primary`, `--secondary`, `--accent`
+- `--muted`, `--border`, `--ring`, `--input`
+- Semantic: `--success`, `--warning`, `--destructive`
+- Charts: `--chart-1` … `--chart-5`
+
+Only update the values in `index.css` to change the look. Layout and spacing are not affected by color changes.

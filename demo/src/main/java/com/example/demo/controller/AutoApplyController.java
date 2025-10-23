@@ -17,12 +17,14 @@ public class AutoApplyController {
 
     @Value("${python.service.base:http://127.0.0.1:5000}")
     private String pythonServiceBase;
-    
+
+    // --- Runtime State ---
     private volatile boolean isRunning = false;
     private volatile int processedJobs = 0;
     private volatile int successfulApplications = 0;
     private volatile String lastRunTime = null;
 
+    // ✅ START AUTO APPLY
     @PostMapping("/start")
     public ResponseEntity<?> startAutoApply(@RequestParam(defaultValue = "10") int limit) {
         if (isRunning) {
@@ -35,23 +37,43 @@ public class AutoApplyController {
             successfulApplications = 0;
             lastRunTime = java.time.LocalDateTime.now().toString();
 
-            // Call Python FastAPI service
-            // Use the FastAPI synchronous endpoint for one-off runs
             String url = pythonServiceBase + "/auto-apply/run-once?limit=" + limit;
-            
-            // Start in a separate thread to avoid blocking
+
+            // Run asynchronously
             new Thread(() -> {
                 try {
+                    System.out.println("🚀 Auto-apply started with limit=" + limit);
                     ResponseEntity<Map> response = restTemplate.postForEntity(url, null, Map.class);
+
                     if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                        Map<String, Object> result = response.getBody();
-                        processedJobs = (Integer) result.getOrDefault("processed", 0);
-                        successfulApplications = (Integer) result.getOrDefault("successful", 0);
+                        Map<String, Object> body = response.getBody();
+                        int processed = asInt(body.get("processed"));
+                        int successful = asInt(body.get("successful"));
+
+                        // Handle nested { result: { processed, successful } } structure
+                        if ((processed == 0 && successful == 0) && body.containsKey("result")) {
+                            Object resultObj = body.get("result");
+                            if (resultObj instanceof Map<?, ?> result) {
+                                processed = asInt(result.get("processed"));
+                                successful = asInt(result.get("successful"));
+                            }
+                        }
+
+                        processedJobs = processed;
+                        successfulApplications = successful;
+
+                        System.out.println("✅ Auto-apply completed:");
+                        System.out.println("   Processed Jobs: " + processedJobs);
+                        System.out.println("   Successful Applications: " + successfulApplications);
+                    } else {
+                        System.err.println("⚠️ Python service responded with non-200 status: " + response.getStatusCode());
                     }
                 } catch (Exception e) {
-                    System.err.println("Error in auto-apply: " + e.getMessage());
+                    System.err.println("❌ Error during auto-apply: " + e.getMessage());
                 } finally {
+                    // ✅ Automatically stop when the run is finished
                     isRunning = false;
+                    System.out.println("🛑 Auto-apply process ended automatically.");
                 }
             }).start();
 
@@ -67,6 +89,7 @@ public class AutoApplyController {
         }
     }
 
+    // ✅ GET STATUS (Frontend polls this every 5s)
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
         Map<String, Object> status = new HashMap<>();
@@ -77,14 +100,42 @@ public class AutoApplyController {
         return ResponseEntity.ok(status);
     }
 
+    // ✅ RECEIVE PROGRESS UPDATES (from Python)
+    @PostMapping("/update-progress")
+    public ResponseEntity<?> updateProgress(@RequestBody Map<String, Object> progress) {
+        try {
+            if (progress.containsKey("processed")) {
+                processedJobs = asInt(progress.get("processed"));
+            }
+            if (progress.containsKey("successful")) {
+                successfulApplications = asInt(progress.get("successful"));
+            }
+            return ResponseEntity.ok("Progress updated");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("Error updating progress: " + e.getMessage());
+        }
+    }
+
+    // ✅ STOP AUTO APPLY (manual stop)
     @PostMapping("/stop")
     public ResponseEntity<?> stopAutoApply() {
         if (!isRunning) {
             return ResponseEntity.badRequest().body("Auto-apply is not running");
         }
-        
-        // Note: This is a soft stop - the current job will complete
+
         isRunning = false;
+        System.out.println("🧩 Manual stop requested for auto-apply.");
         return ResponseEntity.ok("Auto-apply stop requested");
+    }
+
+    // -------------- Helpers --------------
+    private int asInt(Object value) {
+        if (value == null) return 0;
+        if (value instanceof Number) return ((Number) value).intValue();
+        if (value instanceof String) {
+            try { return Integer.parseInt((String) value); } catch (Exception ignored) {}
+        }
+        return 0;
     }
 }

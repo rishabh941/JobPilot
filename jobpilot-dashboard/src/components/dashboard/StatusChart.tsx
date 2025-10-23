@@ -14,29 +14,41 @@ export default function StatusChart({ stats }: StatusChartProps) {
   ];
   
   return (
-    <Card>
+    <Card className="hover-lift transition-smooth border-border/40 bg-card/90 backdrop-blur-md shadow-lg hover:shadow-xl">
       <CardHeader>
-        <CardTitle>Status Distribution</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent font-bold tracking-tight">
+            Status Distribution
+          </span>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
             <XAxis 
               dataKey="name" 
               stroke="hsl(var(--muted-foreground))"
-              fontSize={12}
+              fontSize={13}
+              fontWeight={600}
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
             />
             <YAxis 
               stroke="hsl(var(--muted-foreground))"
               fontSize={12}
+              fontWeight={500}
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
             />
             <Tooltip 
               contentStyle={{
                 backgroundColor: 'hsl(var(--card))',
                 border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
+                borderRadius: '14px',
+                boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.3)',
+                backdropFilter: 'blur(16px)',
+                padding: '12px',
               }}
+              cursor={{ fill: 'hsl(var(--muted))', opacity: 0.15 }}
             />
             <Bar dataKey="value" radius={[8, 8, 0, 0]} />
           </BarChart>
