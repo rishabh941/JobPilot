@@ -1,6 +1,9 @@
 # Global ignores for this repository
 
-
+# Java/Maven
+target/
+*.log
+.mvn/wrapper/maven-wrapper.jar
 
 # IDE/editor
 .idea/
