@@ -11,9 +11,7 @@
 
 # Ignore HTML, CSS, JS auto-generated or frontend files
 *.html linguist-detectable=false
-*.css linguist-detectable=false
-*.js linguist-detectable=false
-*.ts linguist-detectable=false
+
 
 # Detect Java backend properly
 *.java linguist-detectable=true
@@ -24,9 +22,7 @@
 *.java linguist-language=Java
 
 *.html linguist-detectable=false
-*.js linguist-detectable=true
-*.ts linguist-detectable=true
-*.java linguist-detectable=true
+
 
 
 
