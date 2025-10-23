@@ -144,5 +144,4 @@ The scraper builds a Naukri search URL, navigates with Playwright, scrolls and w
 - Duplicates skipped: Expected due to `jobHash` dedup.
 - DB connectivity: Ensure the correct Spring Data starter matches your configuration.
 
-## License
-Add a LICENSE file with your chosen license (e.g., MIT)
+
