@@ -167,12 +167,19 @@ def apply_to_job(page, job):
 
 # ----------------------- MAIN SERVICE -----------------------
 
-def auto_apply_jobs(limit=5):
-    """Fetch jobs, auto-apply, and update statuses."""
+def auto_apply_jobs(limit=5, stop_event=None):
+    """Fetch jobs, auto-apply, and update statuses.
+
+    Accepts an optional threading.Event (`stop_event`) which, when set,
+    will stop processing further jobs as soon as possible.
+    """
     jobs = fetch_unapplied_jobs()
     if not jobs:
         print("✅ No unapplied jobs found.")
-        return
+        return {"processed": 0, "successful": 0}
+
+    processed = 0
+    successful = 0
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, slow_mo=200)
@@ -184,14 +191,27 @@ def auto_apply_jobs(limit=5):
 
         # Step 2: Apply to jobs
         for job in jobs[:limit]:
+            # Check for external stop signal
+            try:
+                if stop_event is not None and getattr(stop_event, 'is_set', lambda: False)():
+                    print("⏸️ Stop requested — halting auto-apply loop.")
+                    break
+            except Exception:
+                # If stop_event isn't a proper Event, ignore and continue
+                pass
+
             job_id = job.get("id")
             status, applied_at = apply_to_job(page, job)
             update_job_status(job_id, status, applied_at)
+            processed += 1
+            if status == "applied":
+                successful += 1
             time.sleep(2)
 
         browser.close()
 
-    print("\n🎯 Auto Apply process completed successfully!")
+    print(f"\n🎯 Auto Apply completed! Processed: {processed}, Successful: {successful}")
+    return {"processed": processed, "successful": successful}
 
 
 # ----------------------- ENTRY POINT -----------------------
