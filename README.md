@@ -115,6 +115,7 @@ curl "http://localhost:8080/api/jobs/scrape?role=Software%20Engineer&location=Ba
 
 - Telegram bridge (stub)  
   POST `/api/telegram/job`
+```
 
 ## Scheduler
 A daily scheduled task runs at 09:00 (server time) and triggers a scrape with preset role/location. Controlled in `JobScheduler` (cron expression). Scheduling is enabled via `@EnableScheduling` in `DemoApplication`.
