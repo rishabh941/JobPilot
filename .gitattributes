@@ -1,12 +1,11 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
 
-# Ignore HTML build files
-/build/* linguist-detectable=false
-/dist/* linguist-detectable=false
-
-# Mark backend Java code as detectable
+*.html linguist-detectable=false
+*.js linguist-detectable=true
+*.ts linguist-detectable=true
 *.java linguist-detectable=true
+
 
 
 
