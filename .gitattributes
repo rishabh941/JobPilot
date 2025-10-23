@@ -1,5 +1,27 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+# ==============================
+# Fix GitHub language detection
+# ==============================
+
+# Ignore build or frontend output
+/build/* linguist-detectable=false
+/dist/* linguist-detectable=false
+/node_modules/* linguist-detectable=false
+
+# Ignore HTML, CSS, JS auto-generated or frontend files
+*.html linguist-detectable=false
+*.css linguist-detectable=false
+*.js linguist-detectable=false
+*.ts linguist-detectable=false
+
+# Detect Java backend properly
+*.java linguist-detectable=true
+/demo/** linguist-detectable=true
+/src/** linguist-detectable=true
+
+# Treat Java as the main language
+*.java linguist-language=Java
 
 *.html linguist-detectable=false
 *.js linguist-detectable=true
