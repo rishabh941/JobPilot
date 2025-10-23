@@ -38,6 +38,11 @@ jobpilot-scraper/**/outputs/
 # Frontend build and deps
 jobpilot-dashboard/node_modules/
 jobpilot-dashboard/dist/
+jobpilot-dashboard/.vite/
+
+# Telegram/Session backups
+*.session.backup
+**/*.session.backup
 
 # OS
 .DS_Store
