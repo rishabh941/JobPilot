@@ -19,6 +19,25 @@ __pycache__/
 .env
 **/.env
 .env.*
+**/*.env
+**/*.env.*
+*.session
+**/*.session
+*.pem
+*.key
+*.p12
+*.keystore
+
+# Scraper artifacts and logs
+jobpilot-scraper/**/logs/
+jobpilot-scraper/**/scraped_html/
+jobpilot-scraper/**/auto_apply_log.csv
+jobpilot-scraper/**/applied_jobs/
+jobpilot-scraper/**/outputs/
+
+# Frontend build and deps
+jobpilot-dashboard/node_modules/
+jobpilot-dashboard/dist/
 
 # OS
 .DS_Store
