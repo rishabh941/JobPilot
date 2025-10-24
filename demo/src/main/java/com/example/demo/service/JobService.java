@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.example.demo.dto.JobResponse;
 import com.example.demo.model.Job;
@@ -43,22 +44,22 @@ public class JobService {
     public List<Job> scrapeJobs(String role, String location, String experienceFilter, String posted, int pages) {
         RestTemplate restTemplate = new RestTemplate();
 
-        // ✅ Build dynamic URL
-        StringBuilder urlBuilder = new StringBuilder(fastApiBaseUrl)
-                .append("?role=").append(role)
-                .append("&location=").append(location);
+        // ✅ Build encoded URL safely (handles spaces and special characters)
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(fastApiBaseUrl)
+                .queryParam("role", role)
+                .queryParam("location", location);
 
-        if (experienceFilter != null && !experienceFilter.isEmpty()) {
-            urlBuilder.append("&experience_filter=").append(experienceFilter);
+        if (experienceFilter != null && !experienceFilter.isEmpty() && !"all".equalsIgnoreCase(experienceFilter)) {
+            uriBuilder.queryParam("experience_filter", experienceFilter);
         }
-        if (posted != null && !posted.isEmpty()) {
-            urlBuilder.append("&posted=").append(posted);
+        if (posted != null && !posted.isEmpty() && !"any".equalsIgnoreCase(posted)) {
+            uriBuilder.queryParam("posted", posted);
         }
-        if (pages > 0) {
-            urlBuilder.append("&pages=").append(pages);
-        }
+        int pagesToUse = Math.max(1, pages);
+        uriBuilder.queryParam("pages", pagesToUse);
 
-        String url = urlBuilder.toString();
+    // Build and encode the URI (auto-encodes spaces and special chars)
+    String url = uriBuilder.build().encode().toUriString();
         logger.info("📡 Fetching jobs from scraper API: {}", url);
 
         JobResponse response;

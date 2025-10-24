@@ -40,3 +40,16 @@ export interface FilterParams {
   company?: string;
   title?: string;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}

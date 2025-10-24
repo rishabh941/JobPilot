@@ -17,7 +17,7 @@ app = FastAPI(
 def scrape_jobs_endpoint(
     role: str,
     location: str,
-    pages: int = 1,
+    pages: int = 5,
     experience_filter: str = None,
     posted: str = None
 ):

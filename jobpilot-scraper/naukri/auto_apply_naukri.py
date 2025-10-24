@@ -63,7 +63,7 @@ def login_to_naukri(page):
     if btn:
         btn.click()
     try:
-        page.wait_for_url("**/mnjuser/homepage", timeout=20000)
+        page.wait_for_url("**/mnjuser/homepage", timeout=15000)  # reduced from 20s
         print("✅ Logged in successfully!")
     except:
         print("⚠️ Manual login required. Please login manually.")
@@ -100,8 +100,9 @@ def apply_to_job(page, job):
 
     try:
         print(f"\n➡️ Visiting: {title} @ {company}")
-        page.goto(url, wait_until="domcontentloaded", timeout=60000)
-        page.wait_for_timeout(3000)
+        # faster navigation
+        page.goto(url, wait_until="domcontentloaded", timeout=25000)
+        page.wait_for_timeout(800)  # reduced from 3000 → 0.8s
 
         apply_btn = (
             page.query_selector("button[title*='Apply']")
@@ -122,14 +123,14 @@ def apply_to_job(page, job):
 
         apply_btn.click()
         handle_popup(page)
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(800)  # reduced from 2500 → 0.8s
 
         success = False
-        for _ in range(8):
+        for _ in range(5):  # reduced loop (8 → 5)
             if page.query_selector("div:has-text('You have successfully applied')"):
                 success = True
                 break
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(500)  # reduced interval (1000 → 500ms)
 
         if success:
             applied_time = datetime.now().isoformat(timespec="seconds")
@@ -152,7 +153,6 @@ def auto_apply_jobs(limit=5, stop_event=None):
     if not jobs:
         print("✅ No unapplied jobs found.")
         update_progress(0, 0)
-        # Ensure the dashboard reflects stopped state even on empty queue
         try:
             requests.post(f"{SPRING_AUTOAPPLY_API}/stop")
         except Exception as e:
@@ -164,14 +164,14 @@ def auto_apply_jobs(limit=5, stop_event=None):
     update_progress(processed, successful)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, slow_mo=200)
+        # 🚀 removed slow_mo for speed, keep UI visible if debugging
+        browser = p.chromium.launch(headless=False)
         context = browser.new_context()
         page = context.new_page()
 
         login_to_naukri(page)
 
         for job in jobs[:limit]:
-            # Cooperative cancellation from FastAPI background controller (if used)
             if stop_event is not None and getattr(stop_event, "is_set", lambda: False)():
                 print("⏹️ Stop requested — exiting early.")
                 break
@@ -180,16 +180,15 @@ def auto_apply_jobs(limit=5, stop_event=None):
             processed += 1
             if status == "applied":
                 successful += 1
-            update_progress(processed, successful)  # ✅ Live update to Spring
-            time.sleep(2)
+            update_progress(processed, successful)
+            time.sleep(0.7)  # reduced from 2s to 0.7s
 
         browser.close()
 
     print(f"\n🎯 Auto Apply completed! Processed: {processed}, Successful: {successful}")
     update_progress(processed, successful)
-    # Signal the dashboard to stop showing "Running"
     try:
-        requests.post(f"{SPRING_AUTOAPPLY_API}/stop")  # ✅ Mark as stopped
+        requests.post(f"{SPRING_AUTOAPPLY_API}/stop")
     except Exception as e:
         print(f"⚠️ Failed to notify stop: {e}")
     return {"processed": processed, "successful": successful}
