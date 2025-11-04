@@ -142,6 +142,6 @@ The scraper builds a Naukri search URL, navigates with Playwright, scrolls and w
 - Empty jobs: Check `jobpilot.scraper.base-url` and FastAPI port.
 - Playwright errors: Ensure browsers are installed (`python -m playwright install`).
 - Duplicates skipped: Expected due to `jobHash` dedup.
-- DB connectivity: Ensure the correct Spring Data starter matches your configuration.
+- DB connectivity: Ensure the correct Spring Data starter matches your configurations.
 
 
