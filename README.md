@@ -133,11 +133,6 @@ Returns: `{"jobs": [...]}`
 
 The scraper builds a Naukri search URL, navigates with Playwright, scrolls and waits for content, parses via BeautifulSoup, extracts fields, and returns JSON. It may write page HTML locally (e.g., `naukri_page_1.html`) for debugging.
 
-## Security
-- Do not commit real DB credentials or API keys.
-- Prefer environment variables or profiles.
-- Restrict FastAPI to localhost or secure it appropriately.
-
 ## Troubleshooting
 - Empty jobs: Check `jobpilot.scraper.base-url` and FastAPI port.
 - Playwright errors: Ensure browsers are installed (`python -m playwright install`).
